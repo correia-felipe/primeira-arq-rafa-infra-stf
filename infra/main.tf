@@ -5,7 +5,7 @@ locals {
 # ---- IAM SFN ----
 resource "aws_iam_role" "sfn_exec" {
   name               = "${local.name_prefix}-sfn-exec"
-  assume_role_policy = file("${path.module}/../policy/step_functions_assume_role.json")
+  assume_role_policy = file("${path.module}/../policy/stepfunction_assume_role.json")
 }
 
 resource "aws_iam_role_policy" "sfn_exec_policy" {
