@@ -1,0 +1,33 @@
+{
+  "Comment": "Ingestion Router",
+  "StartAt": "RoteiaPorPath",
+  "States": {
+    "RoteiaPorPath": {
+      "Type": "Choice",
+      "Choices": [
+        { "Variable": "$.key", "StringMatches": "fornecedorA/*", "Next": "GlueFornecedorA" },
+        { "Variable": "$.key", "StringMatches": "fornecedorB/*", "Next": "GlueFornecedorB" }
+      ],
+      "Default": "NaoMapeado"
+    },
+    "GlueFornecedorA": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::glue:startJobRun.sync",
+      "Parameters": {
+        "JobName": "${glue_job_a}",
+        "Arguments": { "--bucket.$": "$.bucket", "--key.$": "$.key" }
+      },
+      "End": true
+    },
+    "GlueFornecedorB": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::glue:startJobRun.sync",
+      "Parameters": {
+        "JobName": "${glue_job_b}",
+        "Arguments": { "--bucket.$": "$.bucket", "--key.$": "$.key" }
+      },
+      "End": true
+    },
+    "NaoMapeado": { "Type": "Fail", "Cause": "Prefixo não mapeado", "Error": "ROUTING_ERROR" }
+  }
+}

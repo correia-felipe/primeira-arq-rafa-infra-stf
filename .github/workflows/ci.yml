@@ -1,0 +1,64 @@
+name: Deploy Terraform Cognito
+
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      - opened
+      - synchronize
+  workflow_dispatch:
+    inputs:
+      destroy:
+        description: "Deseja destruir os recursos?"
+        required: true
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
+
+jobs:
+  terraform:
+    if: startsWith(github.head_ref || github.ref_name, 'prod/') || github.event_name == 'workflow_dispatch'
+    name: Terraform Deploy or Destroy
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: infra
+
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v3
+
+      - name: Instalar Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.5.7
+
+      - name: Configurar credenciais AWS
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Inicializar Terraform
+        run: terraform init
+
+      - name: Validar configuração
+        run: terraform validate
+
+      - name: Executar Plano
+        run: terraform plan
+
+      - name: Aplicar ou Destruir Recursos
+        run: |
+          if [ "${{ github.event.inputs.destroy }}" == "true" ]; then
+            echo "⚠️ Destruindo infraestrutura..."
+            terraform destroy -auto-approve
+          else
+            echo "✅ Aplicando infraestrutura..."
+            terraform apply -auto-approve
+          fi
