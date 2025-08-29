@@ -16,7 +16,7 @@ resource "aws_iam_role_policy" "sfn_exec_policy" {
 
 # ---- State Machine (templating dos nomes dos jobs) ----
 data "template_file" "asl" {
-  template = file("${path.module}/../src/state_machine_definition.asl.json")
+  template = file("${path.module}/../src/stf_definition.asl.json")
   vars = {
     glue_job_a = var.glue_job_a
     glue_job_b = var.glue_job_b
