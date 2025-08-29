@@ -4,6 +4,7 @@ variable "region"  {
 }
 variable "incoming_bucket_name" { 
     type = string 
+    default = "primeira-arq-rafa-incoming-847623453769"
 }
 
 variable "glue_job_a" { 
