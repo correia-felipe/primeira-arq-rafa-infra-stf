@@ -2,17 +2,6 @@ locals {
   name_prefix = "${var.project}-${var.env}"
 }
 
-# (Opcional) Bucket e habilitação de eventos no EventBridge
-resource "aws_s3_bucket" "incoming" {
-  bucket        = var.incoming_bucket_name
-  force_destroy = true
-}
-
-resource "aws_s3_bucket_notification" "eventbridge_on" {
-  bucket      = aws_s3_bucket.incoming.id
-  eventbridge = true
-}
-
 # ---- IAM SFN ----
 resource "aws_iam_role" "sfn_exec" {
   name               = "${local.name_prefix}-sfn-exec"
