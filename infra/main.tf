@@ -2,6 +2,17 @@ locals {
   name_prefix = "${var.project}-${var.env}"
 }
 
+# (Opcional) Bucket e habilitação de eventos no EventBridge
+resource "aws_s3_bucket" "incoming" {
+  bucket        = var.incoming_bucket_name
+  force_destroy = true
+}
+
+resource "aws_s3_bucket_notification" "eventbridge_on" {
+  bucket      = aws_s3_bucket.incoming.id
+  eventbridge = true
+}
+
 # ---- IAM SFN ----
 resource "aws_iam_role" "sfn_exec" {
   name               = "${local.name_prefix}-sfn-exec"
@@ -27,7 +38,6 @@ resource "aws_sfn_state_machine" "ingestion_router" {
   name       = "${local.name_prefix}-ingestion-router"
   role_arn   = aws_iam_role.sfn_exec.arn
   definition = data.template_file.asl.rendered
-
 }
 
 # ---- EventBridge: Regra S3:ObjectCreated filtrando o bucket ----
@@ -48,7 +58,11 @@ resource "aws_iam_role" "events_to_sfn" {
   name = "${local.name_prefix}-events-to-sfn"
   assume_role_policy = jsonencode({
     Version = "2012-10-17",
-    Statement = [{ Effect = "Allow", Principal = { Service = "events.amazonaws.com" }, Action = "sts:AssumeRole" }]
+    Statement = [{
+      Effect    = "Allow",
+      Principal = { Service = "events.amazonaws.com" },
+      Action    = "sts:AssumeRole"
+    }]
   })
 }
 
@@ -58,21 +72,29 @@ resource "aws_iam_role_policy" "events_to_sfn_policy" {
   policy = jsonencode({
     Version = "2012-10-17",
     Statement = [{
-      Effect = "Allow",
-      Action = "states:StartExecution",
+      Effect   = "Allow",
+      Action   = "states:StartExecution",
       Resource = aws_sfn_state_machine.ingestion_router.arn
     }]
   })
 }
 
-# Target com Input Transformer (manda só bucket e key)
+# ---- Target com Input Transformer (manda somente bucket e key) ----
 resource "aws_cloudwatch_event_target" "to_sfn" {
   rule     = aws_cloudwatch_event_rule.s3_object_created.name
   arn      = aws_sfn_state_machine.ingestion_router.arn
   role_arn = aws_iam_role.events_to_sfn.arn
 
   input_transformer {
-    input_paths = { b = "$.detail.bucket.name", k = "$.detail.object.key" }
-    input_template = jsonencode({ bucket = "<b>", key = "<k>" })
+    # Mapeia os campos do evento S3
+    input_paths = {
+      bucket = "$.detail.bucket.name"
+      key    = "$.detail.object.key"
+    }
+
+    # IMPORTANTE: não usar jsonencode aqui; não colocar aspas nos placeholders
+    input_template = <<EOT
+{"bucket": <bucket>, "key": <key>}
+EOT
   }
 }
