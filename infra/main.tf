@@ -28,12 +28,6 @@ resource "aws_sfn_state_machine" "ingestion_router" {
   role_arn   = aws_iam_role.sfn_exec.arn
   definition = data.template_file.asl.rendered
 
-  logging_configuration {
-    include_execution_data = true
-    level                  = "ALL"
-  }
-
-  tags = { Project = var.project, Env = var.env }
 }
 
 # ---- EventBridge: Regra S3:ObjectCreated filtrando o bucket ----
